@@ -126,7 +126,7 @@ function updateCharts(data) {
   batteryChart.update();
 }
 
-fetch("http://127.0.0.1:5000/stats")
+fetch("https://real-time-ml-training-monitoring-system.vercel.app//stats")
   .then((response) => response.json())
   .then((data) => {
     console.log(data); 
