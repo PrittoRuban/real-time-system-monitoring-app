@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Real-Time Training Dashboard</title>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        background-color: #f0f0f0;
+      }
+      .container {
+        width: 80%;
+        margin: 0 auto;
+        text-align: center;
+      }
+      .progress-bar {
+        width: 100%;
+        background-color: #ddd;
+        border-radius: 5px;
+        margin-bottom: 10px;
+      }
+      .progress-bar-fill {
+        height: 20px;
+        width: 0%;
+        background-color: #4caf50;
+        border-radius: 5px;
+      }
+      #logs {
+        max-height: 200px;
+        overflow-y: auto;
+        border: 1px solid #ccc;
+        padding: 10px;
+        background: #fff;
+      }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Real-Time Training Dashboard</h1>
+
+      <!-- Epoch Progress -->
+      <h3>Epoch Progress</h3>
+      <div class="progress-bar">
+        <div id="epoch-progress" class="progress-bar-fill"></div>
+      </div>
+      <h3>Batch Progress</h3>
+      <div class="progress-bar">
+        <div id="batch-progress" class="progress-bar-fill"></div>
+      </div>
+
+      <!-- Graph for Loss and Accuracy -->
+      <h3>Training Loss and Accuracy</h3>
+      <canvas id="chart"></canvas>
+
+      <!-- Log Section -->
+      <h3>Training Logs</h3>
+      <div id="logs"></div>
+    </div>
+
+    <script>
+      var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+      // Progress bar update function
+      function updateProgressBar(elementId, percentage) {
+          document.getElementById(elementId).style.width = percentage + '%';
+      }
+
+      // Add logs to log section
+      function addLog(message) {
+          const logs = document.getElementById('logs');
+          logs.innerHTML += message + '<br>';
+          logs.scrollTop = logs.scrollHeight;  // Auto scroll to the latest log
+      }
+
+      // Chart.js setup for loss and accuracy graph
+      var ctx = document.getElementById('chart').getContext('2d');
+      var chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+              labels: [],
+              datasets: [{
+                  label: 'Loss',
+                  borderColor: 'red',
+                  fill: false,
+                  data: []
+              }, {
+                  label: 'Accuracy',
+                  borderColor: 'blue',
+                  fill: false,
+                  data: []
+              }]
+          }
+      });
+
+      // Handle real-time updates from backend
+      socket.on('training_data', function(data) {
+          // Update progress bars
+          updateProgressBar('epoch-progress', (data.iteration / data.total_batches) * 100);
+          updateProgressBar('batch-progress', (data.batch_accuracy / 100) * 100);
+
+          // Update chart with new loss and accuracy
+          chart.data.labels.push(`Epoch ${data.epoch}, Iter ${data.iteration}`);
+          chart.data.datasets[0].data.push(data.loss);
+          chart.data.datasets[1].data.push(data.accuracy);
+          chart.update();
+
+          // Add logs
+          addLog(`Epoch: ${data.epoch}, Iter: ${data.iteration} | Loss: ${data.loss}, Accuracy: ${data.accuracy}%`);
+      });
+
+      // Start training on page load
+      socket.emit('start_training');
+    </script>
+  </body>
+</html>
