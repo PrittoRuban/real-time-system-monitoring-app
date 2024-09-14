@@ -1,32 +1,57 @@
-from flask import Flask, render_template
+from flask import Flask, jsonify, render_template
+from flask_cors import CORS
 from flask_socketio import SocketIO
+import psutil
+import datetime as dt
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import time
 
+# Initialize Flask app
 app = Flask(__name__)
+CORS(app)
 socketio = SocketIO(app)
 
+@app.route('/stats')
+def stats():
+    cpu = psutil.cpu_percent(interval=None)
+    memory_stats = psutil.virtual_memory()
+    disk_usage = psutil.disk_usage('/')
+    uptime = dt.datetime.now() - dt.datetime.fromtimestamp(psutil.boot_time())
+    battery = psutil.sensors_battery()
+
+    return jsonify({
+        'cpu': cpu,
+        'memory': memory_stats.percent,
+        'gpu': 60,
+        'disk': disk_usage.percent,
+        'battery': battery.percent if battery else None,
+        'power_plugged': battery.power_plugged if battery else None
+    })
+
 class SimpleModel(nn.Module):
-    def __init__(self):  
+    def __init__(self):
         super(SimpleModel, self).__init__()
         self.fc = nn.Linear(10, 2)
 
     def forward(self, x):
         return self.fc(x)
 
+# Dummy data for training
 data = torch.randn(100, 10)
 labels = torch.randint(0, 2, (100,))
 dataset = TensorDataset(data, labels)
 loader = DataLoader(dataset, batch_size=10)
 
+# Training model and emit data to the frontend
 def train_model():
     model = SimpleModel()
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     total_epochs = 5
+
     for epoch in range(total_epochs):
         running_loss = 0.0
         correct = 0
@@ -52,7 +77,7 @@ def train_model():
                 'batch_loss': round(loss.item(), 4),
                 'batch_accuracy': round(100 * (predicted == labels).sum().item() / labels.size(0), 2)
             })
-            
+
             time.sleep(1)  
 
 @app.route('/')
@@ -64,4 +89,4 @@ def handle_start_training():
     train_model()
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, port=5000)
