@@ -3,8 +3,9 @@ const ctxCpu = document.getElementById("cpuChart").getContext("2d");
 const ctxMemory = document.getElementById("memoryChart").getContext("2d");
 const ctxDisk = document.getElementById("diskChart").getContext("2d");
 const ctxBattery = document.getElementById("batteryChart").getContext("2d");
-const ctxGpu = document.getElementById("gpuChart").getContext("2d"); 
+const ctxGpu = document.getElementById("gpuChart").getContext("2d");
 
+// Create a line chart for each system metric
 let cpuChart = new Chart(ctxCpu, {
   type: "line",
   data: {
@@ -77,7 +78,6 @@ let batteryChart = new Chart(ctxBattery, {
   options: { scales: { y: { beginAtZero: true, max: 100 } } },
 });
 
-// Add GPU chart for constant GPU usage
 let gpuChart = new Chart(ctxGpu, {
   type: "line",
   data: {
@@ -96,40 +96,42 @@ let gpuChart = new Chart(ctxGpu, {
   options: { scales: { y: { beginAtZero: true, max: 100 } } },
 });
 
+// Function to update all charts with fetched data
 function updateCharts(data) {
   const time = new Date().toLocaleTimeString();
 
-  // Add the time label and data points for each chart
+  // Update CPU chart
   cpuChart.data.labels.push(time);
   cpuChart.data.datasets[0].data.push(data.cpu);
   cpuChart.update();
 
+  // Update Memory chart
   memoryChart.data.labels.push(time);
   memoryChart.data.datasets[0].data.push(data.memory);
   memoryChart.update();
 
-  // GPU usage is constant at 60%
+  // Update GPU chart
   gpuChart.data.labels.push(time);
-  gpuChart.data.datasets[0].data.push(30); // Constant GPU usage
+  gpuChart.data.datasets[0].data.push(data.gpu);
   gpuChart.update();
 
+  // Update Disk chart
   diskChart.data.labels.push(time);
   diskChart.data.datasets[0].data.push(data.disk);
   diskChart.update();
 
+  // Update Battery chart
   batteryChart.data.labels.push(time);
   batteryChart.data.datasets[0].data.push(data.battery);
   batteryChart.update();
 }
 
-// Fetch data from server and update charts every 2 seconds
-function updateStats() {
-  fetch("http://127.0.0.1:5000/stats")
-    .then((response) => response.json())
-    .then((data) => {
-      updateCharts(data);
-    })
-    .catch((error) => console.error("Error fetching stats:", error));
-}
+fetch("http://127.0.0.1:5000/stats")
+  .then((response) => response.json())
+  .then((data) => {
+    console.log(data); 
+    updateCharts(data);
+  })
+  .catch((error) => console.error("Error fetching stats:", error));
 
-setInterval(updateStats, 2000); 
+setInterval(updateStats, 2000);

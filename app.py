@@ -8,6 +8,7 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import time
+import csv  
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -46,39 +47,63 @@ dataset = TensorDataset(data, labels)
 loader = DataLoader(dataset, batch_size=10)
 
 # Training model and emit data to the frontend
+# Training model and emit data to the frontend
 def train_model():
     model = SimpleModel()
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=0.001)
     total_epochs = 5
 
-    for epoch in range(total_epochs):
-        running_loss = 0.0
-        correct = 0
-        total = 0
-        for i, (inputs, labels) in enumerate(loader):
-            optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-            
-            running_loss += loss.item()
-            _, predicted = torch.max(outputs, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+    # Prepare CSV file to store results
+    csv_filename = 'training_results.csv'
+    
+    # Open the file in write mode and set up the CSV writer
+    with open(csv_filename, 'w', newline='') as csvfile:
+        fieldnames = ['Epoch', 'Iteration', 'Total Batches', 'Loss', 'Accuracy']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()  # Write the header
 
-            socketio.emit('training_data', {
-                'epoch': epoch + 1,
-                'iteration': i + 1,
-                'total_batches': len(loader),
-                'loss': round(running_loss / (i + 1), 4),
-                'accuracy': round(100 * correct / total, 2),
-                'batch_loss': round(loss.item(), 4),
-                'batch_accuracy': round(100 * (predicted == labels).sum().item() / labels.size(0), 2)
-            })
+        for epoch in range(total_epochs):
+            running_loss = 0.0
+            correct = 0
+            total = 0
+            for i, (inputs, labels) in enumerate(loader):
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+                
+                running_loss += loss.item()
+                _, predicted = torch.max(outputs, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+                
+                # Calculate metrics
+                avg_loss = round(running_loss / (i + 1), 4)
+                accuracy = round(100 * correct / total, 2)
+                socketio.emit('training_data', {
+                    'epoch': epoch + 1,
+                    'iteration': i + 1,
+                    'total_batches': len(loader),
+                    'loss': avg_loss,
+                    'accuracy': accuracy,
+                    'batch_loss': round(loss.item(), 4),
+                    'batch_accuracy': round(100 * (predicted == labels).sum().item() / labels.size(0), 2)
+                })
 
-            time.sleep(1)  
+                # Write to the CSV file
+                writer.writerow({
+                    'Epoch': epoch + 1,
+                    'Iteration': i + 1,
+                    'Total Batches': len(loader),
+                    'Loss': avg_loss,
+                    'Accuracy': accuracy
+                })
+
+                time.sleep(1)
+
+
 
 @app.route('/')
 def index():

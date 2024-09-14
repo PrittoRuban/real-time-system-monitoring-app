@@ -3,7 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Real-Time Training Dashboard</title>
+    <title>Real-Time Training and System Dashboard</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/tailwindcss@2.0.3/dist/tailwind.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
     <style>
       /* Global resets */
       * {
@@ -12,38 +22,53 @@
         box-sizing: border-box;
       }
 
-      /* Modern font */
       body {
         font-family: "Roboto", sans-serif;
         background: linear-gradient(to bottom, #1a1a1a, #4caf50);
+        color: white;
         height: 100vh;
         display: flex;
         justify-content: center;
         align-items: center;
-        color: white;
+        overflow: hidden;
       }
 
       .container {
-        width: 90vw;
-        max-width: 800px;
-        height: 90vh;
+        width: 95vw;
+        height: 95vh;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        padding: 20px;
-        background-color: rgba(0, 0, 0, 0.8);
+        background-color: rgba(0, 0, 0, 0.9);
         border-radius: 15px;
         box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.5);
+        padding: 20px;
       }
 
       h1 {
+        text-align: center;
         font-size: 2em;
-        margin-bottom: 10px;
+        margin-bottom: 20px;
+      }
+
+      .grid-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        grid-gap: 20px;
+        height: 80vh;
+      }
+
+      .grid-item {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        padding: 20px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
       }
 
       h3 {
-        margin: 10px 0;
-        font-size: 1.3em;
+        font-size: 1.5em;
+        margin-bottom: 10px;
         color: #4caf50;
       }
 
@@ -52,69 +77,90 @@
         background-color: rgba(255, 255, 255, 0.1);
         border-radius: 10px;
         overflow: hidden;
-        margin: 10px 0;
+        margin-bottom: 10px;
       }
 
       .progress-bar-fill {
         height: 20px;
         width: 0%;
         background-color: #4caf50;
-        box-shadow: 0px 2px 8px rgba(0, 255, 0, 0.5);
         transition: width 0.4s ease;
         border-radius: inherit;
       }
 
       canvas {
         width: 100%;
-        max-height: 200px;
+        max-height: 180px;
       }
 
-      #logs {
-        max-height: 20vh;
+      .logs {
+        max-height: 15vh;
         overflow-y: auto;
-        border: 1px solid rgba(255, 255, 255, 0.1);
         padding: 10px;
         background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
         text-align: left;
         font-size: 0.9em;
-        border-radius: 10px;
         color: #ddd;
       }
 
-      #logs::-webkit-scrollbar {
+      .logs::-webkit-scrollbar {
         width: 8px;
       }
 
-      #logs::-webkit-scrollbar-thumb {
+      .logs::-webkit-scrollbar-thumb {
         background-color: #4caf50;
         border-radius: 10px;
       }
     </style>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
   </head>
   <body>
     <div class="container">
-      <h1>Real-Time Training Dashboard</h1>
+      <h1>Real-Time Training and System Dashboard</h1>
 
-      <!-- Epoch Progress -->
-      <h3>Epoch Progress</h3>
-      <div class="progress-bar">
-        <div id="epoch-progress" class="progress-bar-fill"></div>
+      <div class="grid-container">
+        <!-- Real-Time Training Progress -->
+        <div class="grid-item">
+          <h3>Epoch Progress</h3>
+          <div class="progress-bar">
+            <div id="epoch-progress" class="progress-bar-fill"></div>
+          </div>
+
+          <h3>Batch Progress</h3>
+          <div class="progress-bar">
+            <div id="batch-progress" class="progress-bar-fill"></div>
+          </div>
+
+          <h3>Training Loss and Accuracy</h3>
+          <canvas id="trainingChart"></canvas>
+
+          <h3>Training Logs</h3>
+          <div id="training-logs" class="logs"></div>
+        </div>
+
+        <!-- System Monitoring -->
+        <div class="grid-item">
+          <h3>System Monitoring</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div class="col-span-1">
+              <h4>CPU Usage</h4>
+              <canvas id="cpuChart"></canvas>
+            </div>
+            <div class="col-span-1">
+              <h4>Memory Usage</h4>
+              <canvas id="memoryChart"></canvas>
+            </div>
+            <div class="col-span-1">
+              <h4>GPU Usage</h4>
+              <canvas id="gpuChart"></canvas>
+            </div>
+            <div class="col-span-1">
+              <h4>Disk Usage</h4>
+              <canvas id="diskChart"></canvas>
+            </div>
+          </div>
+        </div>
       </div>
-
-      <h3>Batch Progress</h3>
-      <div class="progress-bar">
-        <div id="batch-progress" class="progress-bar-fill"></div>
-      </div>
-
-      <!-- Graph for Loss and Accuracy -->
-      <h3>Training Loss and Accuracy</h3>
-      <canvas id="chart"></canvas>
-
-      <!-- Log Section -->
-      <h3>Training Logs</h3>
-      <div id="logs"></div>
     </div>
 
     <script>
@@ -122,21 +168,23 @@
         "http://" + document.domain + ":" + location.port
       );
 
-      // Progress bar update function
+      // Update progress bars
       function updateProgressBar(elementId, percentage) {
         document.getElementById(elementId).style.width = percentage + "%";
       }
 
-      // Add logs to log section
-      function addLog(message) {
-        const logs = document.getElementById("logs");
+      // Add logs to training logs section
+      function addTrainingLog(message) {
+        const logs = document.getElementById("training-logs");
         logs.innerHTML += message + "<br>";
         logs.scrollTop = logs.scrollHeight; // Auto scroll to the latest log
       }
 
-      // Chart.js setup for loss and accuracy graph
-      var ctx = document.getElementById("chart").getContext("2d");
-      var chart = new Chart(ctx, {
+      // Chart.js setup for training loss and accuracy graph
+      var trainingCtx = document
+        .getElementById("trainingChart")
+        .getContext("2d");
+      var trainingChart = new Chart(trainingCtx, {
         type: "line",
         data: {
           labels: [],
@@ -159,27 +207,84 @@
 
       // Handle real-time updates from backend
       socket.on("training_data", function (data) {
-        // Update progress bars
         updateProgressBar(
           "epoch-progress",
           (data.iteration / data.total_batches) * 100
         );
         updateProgressBar("batch-progress", (data.batch_accuracy / 100) * 100);
 
-        // Update chart with new loss and accuracy
-        chart.data.labels.push(`Epoch ${data.epoch}, Iter ${data.iteration}`);
-        chart.data.datasets[0].data.push(data.loss);
-        chart.data.datasets[1].data.push(data.accuracy);
-        chart.update();
+        trainingChart.data.labels.push(
+          `Epoch ${data.epoch}, Iter ${data.iteration}`
+        );
+        trainingChart.data.datasets[0].data.push(data.loss);
+        trainingChart.data.datasets[1].data.push(data.accuracy);
+        trainingChart.update();
 
-        // Add logs
-        addLog(
+        addTrainingLog(
           `Epoch: ${data.epoch}, Iter: ${data.iteration} | Loss: ${data.loss}, Accuracy: ${data.accuracy}%`
         );
       });
 
-      // Start training on page load
       socket.emit("start_training");
+    </script>
+
+    <script>
+      // Example System Monitoring Charts (CPU, Memory, GPU, Disk, Battery)
+      var cpuCtx = document.getElementById("cpuChart").getContext("2d");
+      var cpuChart = new Chart(cpuCtx, {
+        type: "doughnut",
+        data: {
+          labels: ["Used", "Free"],
+          datasets: [
+            {
+              data: [70, 30], // Example values
+              backgroundColor: ["#FF6384", "#36A2EB"],
+            },
+          ],
+        },
+      });
+
+      var memoryCtx = document.getElementById("memoryChart").getContext("2d");
+      var memoryChart = new Chart(memoryCtx, {
+        type: "doughnut",
+        data: {
+          labels: ["Used", "Free"],
+          datasets: [
+            {
+              data: [60, 40], // Example values
+              backgroundColor: ["#FFCE56", "#36A2EB"],
+            },
+          ],
+        },
+      });
+
+      var gpuCtx = document.getElementById("gpuChart").getContext("2d");
+      var gpuChart = new Chart(gpuCtx, {
+        type: "doughnut",
+        data: {
+          labels: ["Used", "Free"],
+          datasets: [
+            {
+              data: [65, 35], // Example values
+              backgroundColor: ["#FF6384", "#4BC0C0"],
+            },
+          ],
+        },
+      });
+
+      var diskCtx = document.getElementById("diskChart").getContext("2d");
+      var diskChart = new Chart(diskCtx, {
+        type: "doughnut",
+        data: {
+          labels: ["Used", "Free"],
+          datasets: [
+            {
+              data: [50, 50], // Example values
+              backgroundColor: ["#FF6384", "#FFCE56"],
+            },
+          ],
+        },
+      });
     </script>
   </body>
 </html>
